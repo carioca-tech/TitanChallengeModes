@@ -7,9 +7,8 @@ local PLUGIN_NAME = "TITAN_CHALLENGE_MODE"
 local Console = LibStub("AceConsole-3.0")
 local sortedMaps = {}
 local currentTooltipText = ""
-local currentButtonText = ""
 
-local chestRewards = {
+local chestRewardLevel = {
     [0] = nil,
     [2] = 910,
     [3] = 910,
@@ -36,7 +35,7 @@ function GetLevelRewardColor(mythicLevel)
     elseif mythicLevel == 0 then
         quality = ITEM_QUALITY_COLORS[0] -- poor
     elseif mythicLevel < 4 then
-        quality = ITEM_QUALITY_COLORS[1]  -- common
+        quality = ITEM_QUALITY_COLORS[1] -- common
     elseif mythicLevel < 7 then
         quality = ITEM_QUALITY_COLORS[2] -- uncommon
     elseif mythicLevel < 10 then
@@ -47,8 +46,7 @@ function GetLevelRewardColor(mythicLevel)
         quality = ITEM_QUALITY_COLORS[5] -- legendary
     end
 
-    return { r = quality.r, g= quality.g, b=quality.b }
-
+    return { r = quality.r, g = quality.g, b = quality.b }
 end
 
 function ChallengeModeMapsUpdatedCallback()
@@ -59,10 +57,9 @@ function ChallengeModeMapsUpdatedCallback()
     newMaps = {};
     local weeklyBest = 0;
     for index = 1, #mapTable do
-
         local mapChallengeModeId = mapTable[index]
         C_ChallengeMode.RequestLeaders(mapChallengeModeId)
-        if (not mapNames[mapChallengeModeId] ) then
+        if (not mapNames[mapChallengeModeId]) then
             mapNames[mapChallengeModeId] = C_ChallengeMode.GetMapInfo(mapChallengeModeId)
         end
 
@@ -75,7 +72,7 @@ function ChallengeModeMapsUpdatedCallback()
         end
 
         local recentBestTime, recentBestLevel = C_ChallengeMode.GetRecentBestForMap(mapChallengeModeId);
-        tinsert(newMaps, { id = mapId , level = bestLevel, affixes = affixes, name =  mapNames[mapChallengeModeId], recentBestLevel =  recentBestLevel, recentBestTime = recentBestTime});
+        tinsert(newMaps, { id = mapId, level = bestLevel, affixes = affixes, name = mapNames[mapChallengeModeId], recentBestLevel = recentBestLevel, recentBestTime = recentBestTime });
     end
 
     table.sort(newMaps, function(a, b) return a.name < b.name end);
@@ -98,46 +95,61 @@ end
 function ChallengeModeCompletedCallback()
     C_ChallengeMode.RequestMapInfo();
     C_ChallengeMode.RequestRewards();
-
 end
 
 function updateTooltipText()
     local tooltipText = ""
+    local bestRunLevel = 0;
+
+    if (C_ChallengeMode.IsWeeklyRewardAvailable()) then
+        tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You still haven't claimed your rewards for this week."], RED_FONT_COLOR) .. "\n"
+    end
 
     if (sortedMaps and #sortedMaps) then
-        local weeklyRuns = ""
+        local dungeonRuns = ""
         for mapIndex = 1, #sortedMaps do
             local thisMap = sortedMaps[mapIndex]
-            if(thisMap.level > 0 ) then
-                weeklyRuns = weeklyRuns ..
+            if (thisMap.level > 0) then
+                dungeonRuns = dungeonRuns ..
                         TitanUtils_GetColoredText(thisMap.name, NORMAL_FONT_COLOR) ..
                         " " .. TitanUtils_GetColoredText("[", HIGHLIGHT_FONT_COLOR) ..
                         TitanUtils_GetColoredText("+" .. thisMap.level, GetLevelRewardColor(thisMap.level)) ..
                         TitanUtils_GetColoredText("]", HIGHLIGHT_FONT_COLOR) .. "\r"
             end
+            if (thisMap.level > bestRunLevel) then
+                bestRunLevel = thisMap.level
+            end
         end
 
-        if (weeklyRuns == "") then
+        if (bestRunLevel == 0) then
             tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You have not completed any mythic keystone dungeons this week."], NORMAL_FONT_COLOR)
         else
-            tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["Your best runs this week:"], HIGHLIGHT_FONT_COLOR) .. "\r" .. weeklyRuns
+
+            if (bestRunLevel > 15) then
+                weeklyRewardItemLevel = chestRewardLevel[15]
+            else
+                weeklyRewardItemLevel = chestRewardLevel[bestRunLevel]
+            end
+
+            local highestDungeonThisWeek = string.format(I18N["You've completed +%s this week."], bestRunLevel)
+            local weeklyChestContents = string.format(I18N["Your next weekly chest will contain an item of item level %s or above."], weeklyRewardItemLevel)
+
+            tooltipText = tooltipText .. TitanUtils_GetColoredText(highestDungeonThisWeek, NORMAL_FONT_COLOR) .. "\n" ..
+                    TitanUtils_GetColoredText(weeklyChestContents, NORMAL_FONT_COLOR) .. "\n" ..
+                    TitanUtils_GetColoredText(I18N["Your best runs this week:"], HIGHLIGHT_FONT_COLOR) .. "\r" .. dungeonRuns
         end
     end
-    --        tooltipText = tooltipText .. TitanUtils_GetColoredText(mapName, HIGHLIGHT_FONT_COLOR)  .. "\r"
     currentTooltipText = tooltipText
-
 end
 
 local function ChallengeModeButtonText()
-    local shouldDisplayLabelText = TitanGetVar(PLUGIN_NAME, "ShowLabelText")
-    local shouldColorLabelText = TitanGetVar(PLUGIN_NAME, "LabelTextColor")
 
     local bestMap;
     local bestLevel = 0;
     if (sortedMaps and #sortedMaps) then
         for mapIndex = 1, #sortedMaps do
             local thisMap = sortedMaps[mapIndex]
-            if(thisMap.level > bestLevel ) then
+            if (thisMap.level > bestLevel) then
                 bestLevel = thisMap.level
                 bestMap = thisMap
             end
@@ -145,9 +157,9 @@ local function ChallengeModeButtonText()
     end
 
     local newButtonText = ""
-    if (shouldDisplayLabelText) then
+    if (TitanGetVar(PLUGIN_NAME, "ShowLabelText")) then
         local dungeonLabelColor
-        if shouldColorLabelText then
+        if (TitanGetVar(PLUGIN_NAME, "LabelTextColor")) then
             if bestMap and bestMap.name then
                 -- color by dungeon level
                 dungeonLabelColor = GetLevelRewardColor(bestMap.level)
@@ -166,6 +178,11 @@ local function ChallengeModeButtonText()
             newButtonText = TitanUtils_GetColoredText(I18N["None"], dungeonLabelColor)
         end
     end
+
+    if (TitanGetVar(PLUGIN_NAME, "DisplayWeeklyBest")) then
+        local highestLevelColor = GetLevelRewardColor(bestLevel)
+        newButtonText = newButtonText .. TitanUtils_GetColoredText(" [+" .. bestLevel .. "]", highestLevelColor)
+    end
     return newButtonText
 end
 
@@ -181,7 +198,7 @@ function PrepareMenuCallback()
     L_UIDropDownMenu_AddButton({
         checked = TitanGetVar(PLUGIN_NAME, "DisplayOnRightSide"),
         text = TITAN_I18N["TITAN_CLOCK_MENU_DISPLAY_ON_RIGHT_SIDE"],
-        func = function (self)
+        func = function(self)
             TitanToggleVar(PLUGIN_NAME, "DisplayOnRightSide");
             TitanPanel_InitPanelButtons();
         end
@@ -189,9 +206,19 @@ function PrepareMenuCallback()
 
     L_UIDropDownMenu_AddButton({
         checked = TitanGetVar(PLUGIN_NAME, "LabelTextColor"),
-        text = I18N["Color Dungeon Name"],
-        func = function (self)
+        text = I18N["Color Label Text"],
+        func = function(self)
             TitanToggleVar(PLUGIN_NAME, "LabelTextColor")
+            TitanPanelButton_UpdateButton(PLUGIN_NAME)
+            TitanPanel_InitPanelButtons();
+        end
+    });
+
+    L_UIDropDownMenu_AddButton({
+        checked = TitanGetVar(PLUGIN_NAME, "DisplayWeeklyBest"),
+        text = I18N["Display Weekly Best Level"],
+        func = function(self)
+            TitanToggleVar(PLUGIN_NAME, "DisplayWeeklyBest")
             TitanPanelButton_UpdateButton(PLUGIN_NAME)
             TitanPanel_InitPanelButtons();
         end
@@ -211,7 +238,7 @@ end
 
 function RegisterPlugin()
 
-    local frame = CreateFrame("Button", "TitanPanel" .. PLUGIN_NAME .."Button", CreateFrame("Frame", nil, UIParent), "TitanPanelComboTemplate")
+    local frame = CreateFrame("Button", "TitanPanel" .. PLUGIN_NAME .. "Button", CreateFrame("Frame", nil, UIParent), "TitanPanelComboTemplate")
     frame:SetFrameStrata("FULLSCREEN")
     frame:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
     frame:RegisterEvent("ADDON_LOADED")
@@ -222,9 +249,9 @@ function RegisterPlugin()
     frame:RegisterEvent("CHALLENGE_MODE_LEADERS_UPDATE")
     frame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 
-    frame["CHALLENGE_MODE_MAPS_UPDATE"] = function (self) ChallengeModeMapsUpdatedCallback() end
-    frame["CHALLENGE_MODE_LEADERS_UPDATE"] = function (self) ChallengeModeLeadersUpdatedCallback() end
-    frame["CHALLENGE_MODE_COMPLETED"] = function (self) ChallengeModeCompletedCallback() end
+    frame["CHALLENGE_MODE_MAPS_UPDATE"] = function(self) ChallengeModeMapsUpdatedCallback() end
+    frame["CHALLENGE_MODE_LEADERS_UPDATE"] = function(self) ChallengeModeLeadersUpdatedCallback() end
+    frame["CHALLENGE_MODE_COMPLETED"] = function(self) ChallengeModeCompletedCallback() end
 
     function frame:ADDON_LOADED(a1)
         if a1 ~= ADDON_NAME then
@@ -248,7 +275,8 @@ function RegisterPlugin()
                 ShowIcon = 1,
                 DisplayOnRightSide = false,
                 ShowLabelText = true,
-                LabelTextColor = true
+                LabelTextColor = true,
+                DisplayHighestLevel = true
             }
         }
         C_ChallengeMode.RequestMapInfo();

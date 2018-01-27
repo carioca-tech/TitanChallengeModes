@@ -66,6 +66,7 @@ function ChallengeModeMapsUpdatedCallback()
         local lastCompletion, bestCompletion, bestLevel, affixes = C_ChallengeMode.GetMapPlayerStats(mapChallengeModeId);
         if (not bestLevel) then
             bestLevel = 0
+            -- bestLevel = math.floor (math.random(16))
         end
         if (bestLevel > weeklyBest) then
             weeklyBest = bestLevel
@@ -101,7 +102,7 @@ function updateTooltipText()
     local tooltipText = ""
     local bestRunLevel = 0;
 
-    if (C_ChallengeMode.IsWeeklyRewardAvailable()) then
+    if (not C_ChallengeMode.IsWeeklyRewardAvailable()) then
         tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You still haven't claimed your rewards for this week."], RED_FONT_COLOR) .. "\n"
     end
 

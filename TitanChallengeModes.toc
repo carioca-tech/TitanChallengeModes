@@ -1,9 +1,8 @@
 ## Interface: 070300
-## Title: Titan Panel [Challenge Modes] |cffffffffBy Thymorr
+## Title: Titan Panel [Mythic Dungeons] |cffffffffBy Thymorr
 ## Author: Otiluke
 ## Version: 0.1.0
-## Notes: Titan Panel Plugin for Challenge Modes
-## X-Category: Buffs, Combat
+## Notes: Titan Panel Plugin for Mythic Dungeons
 ## DefaultState: Enabled
 ## LoadOnDemand: 0
 ## Dependencies: Titan

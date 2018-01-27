@@ -1,0 +1,12 @@
+## Interface: 070300
+## Title: Titan Panel [Challenge Modes] |cffffffffBy Thymorr
+## Author: Otiluke
+## Version: 0.1.0
+## Notes: Titan Panel Plugin for Challenge Modes
+## X-Category: Buffs, Combat
+## DefaultState: Enabled
+## LoadOnDemand: 0
+## Dependencies: Titan
+libs\AceConsole-3.0\AceConsole-3.0.lua
+locales\Locales.xml
+TitanChallengeModes.lua

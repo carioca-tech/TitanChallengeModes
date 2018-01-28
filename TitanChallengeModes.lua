@@ -102,7 +102,7 @@ function updateTooltipText()
     local tooltipText = ""
     local bestRunLevel = 0;
 
-    if (not C_ChallengeMode.IsWeeklyRewardAvailable()) then
+    if (C_ChallengeMode.IsWeeklyRewardAvailable()) then
         tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You still haven't claimed your rewards for this week."], RED_FONT_COLOR) .. "\n"
     end
 
@@ -292,3 +292,5 @@ function RegisterPlugin()
 end
 
 RegisterPlugin()
+C_ChallengeMode.RequestMapInfo();
+C_ChallengeMode.RequestRewards();

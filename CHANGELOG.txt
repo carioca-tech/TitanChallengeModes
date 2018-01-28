@@ -1,2 +1,3 @@
 - 0.1.0 Initial Release
 - 0.1.1 Localization Fixes
+- 0.1.2 Loading map info as soon as the addon runs

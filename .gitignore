@@ -2,3 +2,4 @@ libs/
 *.ipr
 *.iws
 *.iml
+.idea/

@@ -6,8 +6,6 @@ local PLUGIN_NAME = "TITAN_CHALLENGE_MODE"
 
 local Console = LibStub("AceConsole-3.0")
 local sortedMaps = {}
-local currentTooltipText = ""
-
 local chestRewardLevel = {
     [0] = nil,
     [2] = 910,
@@ -78,7 +76,6 @@ function ChallengeModeMapsUpdatedCallback()
 
     table.sort(newMaps, function(a, b) return a.name < b.name end);
     sortedMaps = newMaps
-    updateTooltipText()
     TitanPanelButton_UpdateButton(PLUGIN_NAME)
 end
 
@@ -96,51 +93,6 @@ end
 function ChallengeModeCompletedCallback()
     C_ChallengeMode.RequestMapInfo();
     C_ChallengeMode.RequestRewards();
-end
-
-function updateTooltipText()
-    local tooltipText = ""
-    local bestRunLevel = 0;
-
-    if (C_ChallengeMode.IsWeeklyRewardAvailable()) then
-        tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You still haven't claimed your rewards for this week."], RED_FONT_COLOR) .. "\n"
-    end
-
-    if (sortedMaps and #sortedMaps) then
-        local dungeonRuns = ""
-        for mapIndex = 1, #sortedMaps do
-            local thisMap = sortedMaps[mapIndex]
-            if (thisMap.level > 0) then
-                dungeonRuns = dungeonRuns ..
-                        TitanUtils_GetColoredText(thisMap.name, NORMAL_FONT_COLOR) ..
-                        " " .. TitanUtils_GetColoredText("[", HIGHLIGHT_FONT_COLOR) ..
-                        TitanUtils_GetColoredText("+" .. thisMap.level, GetLevelRewardColor(thisMap.level)) ..
-                        TitanUtils_GetColoredText("]", HIGHLIGHT_FONT_COLOR) .. "\r"
-            end
-            if (thisMap.level > bestRunLevel) then
-                bestRunLevel = thisMap.level
-            end
-        end
-
-        if (bestRunLevel == 0) then
-            tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You have not completed any mythic keystone dungeons this week."], NORMAL_FONT_COLOR)
-        else
-
-            if (bestRunLevel > 15) then
-                weeklyRewardItemLevel = chestRewardLevel[15]
-            else
-                weeklyRewardItemLevel = chestRewardLevel[bestRunLevel]
-            end
-
-            local highestDungeonThisWeek = string.format(I18N["You've completed +%s this week."], bestRunLevel)
-            local weeklyChestContents = string.format(I18N["Your next weekly chest will contain an item of item level %s or above."], weeklyRewardItemLevel)
-
-            tooltipText = tooltipText .. TitanUtils_GetColoredText(highestDungeonThisWeek, NORMAL_FONT_COLOR) .. "\n" ..
-                    TitanUtils_GetColoredText(weeklyChestContents, NORMAL_FONT_COLOR) .. "\n" ..
-                    TitanUtils_GetColoredText(I18N["Your best runs this week:"], HIGHLIGHT_FONT_COLOR) .. "\r" .. dungeonRuns
-        end
-    end
-    currentTooltipText = tooltipText
 end
 
 local function ChallengeModeButtonText()
@@ -188,7 +140,48 @@ local function ChallengeModeButtonText()
 end
 
 local function ChallengeModeTooltipText()
-    return currentTooltipText;
+    local tooltipText = ""
+    local bestRunLevel = 0;
+
+    if (C_ChallengeMode.IsWeeklyRewardAvailable()) then
+        tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You still haven't claimed your rewards for this week."], RED_FONT_COLOR) .. "\n"
+    end
+
+    if (sortedMaps and #sortedMaps) then
+        local dungeonRuns = ""
+        for mapIndex = 1, #sortedMaps do
+            local thisMap = sortedMaps[mapIndex]
+            if (thisMap.level > 0) then
+                dungeonRuns = dungeonRuns ..
+                        TitanUtils_GetColoredText(thisMap.name, NORMAL_FONT_COLOR) ..
+                        " " .. TitanUtils_GetColoredText("[", HIGHLIGHT_FONT_COLOR) ..
+                        TitanUtils_GetColoredText("+" .. thisMap.level, GetLevelRewardColor(thisMap.level)) ..
+                        TitanUtils_GetColoredText("]", HIGHLIGHT_FONT_COLOR) .. "\r"
+            end
+            if (thisMap.level > bestRunLevel) then
+                bestRunLevel = thisMap.level
+            end
+        end
+
+        if (bestRunLevel == 0) then
+            tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You have not completed any mythic keystone dungeons this week."], NORMAL_FONT_COLOR)
+        else
+
+            if (bestRunLevel > 15) then
+                weeklyRewardItemLevel = chestRewardLevel[15]
+            else
+                weeklyRewardItemLevel = chestRewardLevel[bestRunLevel]
+            end
+
+            local highestDungeonThisWeek = string.format(I18N["You've completed +%s this week."], bestRunLevel)
+            local weeklyChestContents = string.format(I18N["Your next weekly chest will contain an item of item level %s or above."], weeklyRewardItemLevel)
+
+            tooltipText = tooltipText .. TitanUtils_GetColoredText(highestDungeonThisWeek, NORMAL_FONT_COLOR) .. "\n" ..
+                    TitanUtils_GetColoredText(weeklyChestContents, NORMAL_FONT_COLOR) .. "\n" ..
+                    TitanUtils_GetColoredText(I18N["Your best runs this week:"], HIGHLIGHT_FONT_COLOR) .. "\r" .. dungeonRuns
+        end
+    end
+    return tooltipText
 end
 
 function PrepareMenuCallback()
@@ -277,6 +270,7 @@ function RegisterPlugin()
                 DisplayOnRightSide = false,
                 ShowLabelText = true,
                 LabelTextColor = true,
+                DisplayWeeklyBest = true,
                 DisplayHighestLevel = true
             }
         }

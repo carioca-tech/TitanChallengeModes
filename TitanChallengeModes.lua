@@ -4,7 +4,12 @@ local I18N = LibStub("AceLocale-3.0"):GetLocale("TitanChallengeMode")
 local TITAN_I18N = LibStub("AceLocale-3.0"):GetLocale("Titan", true)
 local PLUGIN_NAME = "TITAN_CHALLENGE_MODE"
 
+local logger = {}
 local Console = LibStub("AceConsole-3.0")
+function logger.debug(message)
+    -- Console.Print(message)
+end
+
 local sortedMaps = {}
 local chestRewardLevel = {
     [0] = nil,
@@ -47,8 +52,7 @@ function GetLevelRewardColor(mythicLevel)
     return { r = quality.r, g = quality.g, b = quality.b }
 end
 
-function ChallengeModeMapsUpdatedCallback()
-    -- Console:Print("ChallengeModeMapsUpdatedCallback")
+function ChallengeModeMapsUpdatedCallback(p_frame, p_event, ...)
     local mapTable = C_ChallengeMode.GetMapTable()
     local mapNames = {}
 
@@ -56,22 +60,23 @@ function ChallengeModeMapsUpdatedCallback()
     local weeklyBest = 0;
     for index = 1, #mapTable do
         local mapChallengeModeId = mapTable[index]
-        C_ChallengeMode.RequestLeaders(mapChallengeModeId)
+
         if (not mapNames[mapChallengeModeId]) then
-            mapNames[mapChallengeModeId] = C_ChallengeMode.GetMapInfo(mapChallengeModeId)
+            local mapName, id, timeLimit, texture, backgroundTexture = C_ChallengeMode.GetMapUIInfo(mapChallengeModeId);
+            mapNames[mapChallengeModeId] = mapName
+            C_ChallengeMode.RequestLeaders(mapChallengeModeId)
         end
 
-        local lastCompletion, bestCompletion, bestLevel, affixes = C_ChallengeMode.GetMapPlayerStats(mapChallengeModeId);
-        if (not bestLevel) then
-            bestLevel = 0
-            -- bestLevel = math.floor (math.random(16))
+        -- local lastCompletion, bestCompletion, bestLevel, affixes = C_ChallengeMode.GetMapPlayerStats(mapChallengeModeId);
+        local duration, bestCompletion, completionDate, affixes, members = C_MythicPlus.GetWeeklyBestForMap(mapChallengeModeId);
+        if (not bestCompletion) then
+            bestCompletion = 0
         end
-        if (bestLevel > weeklyBest) then
-            weeklyBest = bestLevel
+        if (bestCompletion > weeklyBest) then
+            weeklyBest = bestCompletion
         end
-
-        local recentBestTime, recentBestLevel = C_ChallengeMode.GetRecentBestForMap(mapChallengeModeId);
-        tinsert(newMaps, { id = mapId, level = bestLevel, affixes = affixes, name = mapNames[mapChallengeModeId], recentBestLevel = recentBestLevel, recentBestTime = recentBestTime });
+---        local recentBestTime, recentBestLevel = C_MythicPlus.GetWeeklyBestForMap(mapChallengeModeId);
+        tinsert(newMaps, { id = mapChallengeModeId, level = bestCompletion, affixes = affixes, name = mapNames[mapChallengeModeId], recentBestLevel = bestCompletion });
     end
 
     table.sort(newMaps, function(a, b) return a.name < b.name end);
@@ -80,25 +85,16 @@ function ChallengeModeMapsUpdatedCallback()
 end
 
 
-function ChallengeModeLeadersUpdatedCallback()
-    local topAttemptArray = C_ChallengeMode.GetGuildLeaders();
-    if (topAttemptArray) then
-        for index = 1, #topAttemptArray do
-            local topAttempt = topAttemptArray[index]
-        end
-    end
-    TitanPanelButton_UpdateButton(PLUGIN_NAME)
-end
-
 function ChallengeModeCompletedCallback()
-    C_ChallengeMode.RequestMapInfo();
-    C_ChallengeMode.RequestRewards();
+    C_MythicPlus.RequestMapInfo();
+    C_MythicPlus.RequestRewards();
 end
 
 local function ChallengeModeButtonText()
-
+    logger.debug("ChallengeModeButtonText")
     local bestMap;
     local bestLevel = 0;
+
     if (sortedMaps and #sortedMaps) then
         for mapIndex = 1, #sortedMaps do
             local thisMap = sortedMaps[mapIndex]
@@ -142,9 +138,15 @@ end
 local function ChallengeModeTooltipText()
     local tooltipText = ""
     local bestRunLevel = 0;
-    local rewardAvailable = C_ChallengeMode.IsWeeklyRewardAvailable()
+
+    local level, rewardLevel, nextRewardLevel = C_MythicPlus.GetWeeklyChestRewardLevel();
+    local rewardAvailable = C_MythicPlus.IsWeeklyRewardAvailable()
+
     if rewardAvailable then
+        logger.debug("reward available")
         tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You still haven't claimed your rewards for this week."], RED_FONT_COLOR) .. "\n"
+    else
+        logger.debug("reward not available")
     end
 
     if (sortedMaps and #sortedMaps) then
@@ -163,6 +165,7 @@ local function ChallengeModeTooltipText()
             end
         end
 
+        tooltipText = tooltipText .. dungeonRuns
         if (bestRunLevel == 0) then
             tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You have not completed any mythic keystone dungeons this week."], NORMAL_FONT_COLOR)
         else
@@ -184,7 +187,9 @@ local function ChallengeModeTooltipText()
     return tooltipText
 end
 
-function PrepareMenuCallback()
+function ChallengeModeRightClickMenuPrepare()
+    logger.debug("ChallengeModeRightClickMenuPrepare")
+
     TitanPanelRightClickMenu_AddTitle(TitanPlugins[PLUGIN_NAME].menuText)
     TitanPanelRightClickMenu_AddToggleIcon(PLUGIN_NAME)
     TitanPanelRightClickMenu_AddToggleLabelText(PLUGIN_NAME)
@@ -223,7 +228,8 @@ function PrepareMenuCallback()
 end
 
 function GetInterfaceIcon()
-    if C_ChallengeMode.IsWeeklyRewardAvailable() then
+    local level, rewardLevel, nextRewardLevel = C_MythicPlus.GetWeeklyChestRewardLevel();
+    if C_MythicPlus.IsWeeklyRewardAvailable() then
         return "Interface\\Icons\\Achievement_challengemode_gold"
     else
         return "Interface\\Icons\\Achievement_challengemode_silver"
@@ -231,54 +237,67 @@ function GetInterfaceIcon()
 end
 
 function RegisterPlugin()
+    logger.debug("RegisterPlugin")
 
-    local frame = CreateFrame("Button", "TitanPanel" .. PLUGIN_NAME .. "Button", CreateFrame("Frame", nil, UIParent), "TitanPanelComboTemplate")
+    local frame = CreateFrame("Button", "TitanPanelTITAN_CHALLENGE_MODEButton", CreateFrame("Frame", nil, UIParent), "TitanPanelComboTemplate")
+
     frame:SetFrameStrata("FULLSCREEN")
-    frame:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
+    frame:SetScript("OnEvent", function(self, event, ...)
+            if self[event] then self[event](self, event, ...)end
+    end)
     frame:RegisterEvent("ADDON_LOADED")
     frame:SetScript("OnClick", function(self, button, ...)
         TitanPanelButton_OnClick(self, button)
     end)
     frame:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
-    frame:RegisterEvent("CHALLENGE_MODE_LEADERS_UPDATE")
     frame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 
-    frame["CHALLENGE_MODE_MAPS_UPDATE"] = function(self) ChallengeModeMapsUpdatedCallback() end
-    frame["CHALLENGE_MODE_LEADERS_UPDATE"] = function(self) ChallengeModeLeadersUpdatedCallback() end
-    frame["CHALLENGE_MODE_COMPLETED"] = function(self) ChallengeModeCompletedCallback() end
+    frame["CHALLENGE_MODE_MAPS_UPDATE"] = function(self, event, ...) ChallengeModeMapsUpdatedCallback(self, event,...) end
+    frame["CHALLENGE_MODE_COMPLETED"] = function(self,event, ...) ChallengeModeCompletedCallback(self, event, ...) end
 
     function frame:ADDON_LOADED(a1)
         if a1 ~= ADDON_NAME then
             return
         end
+        logger.debug("ADDON_LOADED")
+        self:UnregisterEvent("ADDON_LOADED")
+        self.ADDON_LOADED = nil
+    end
+
+
+    frame.registry = {
+        id = PLUGIN_NAME,
+        menuText = "Challenge Modes|r",
+        buttonTextFunction = "TitanPanelButton_ChallengeModeButtonText",
+        tooltipTitle = I18N["Mythic Keystones"],
+        tooltipTextFunction = "TitanPanelButton_ChallengeModeTooltipText",
+        frequency = 1,
+        icon = GetInterfaceIcon(),
+        iconWidth = 16,
+        category = "Information",
+        version = GetAddOnMetadata(ADDON_NAME, "Version"),
+        savedVariables = {
+            ShowIcon = 1,
+            DisplayOnRightSide = false,
+            ShowLabelText = true,
+            LabelTextColor = true,
+            DisplayWeeklyBest = true,
+            DisplayHighestLevel = true
+        }
+    }
+
+
+    function frame:ADDON_LOADED(a1)
+        if a1 ~= ADDON_NAME then
+            return
+        end
+        logger.debug("ADDON_LOADED")
 
         self:UnregisterEvent("ADDON_LOADED")
         self.ADDON_LOADED = nil
-        self.registry = {
-            id = PLUGIN_NAME,
-            menuText = "Challenge Modes|r",
-            buttonTextFunction = "TitanPanelButton_ChallengeModeButtonText",
-            tooltipTitle = I18N["Mythic Keystones"],
-            tooltipTextFunction = "TitanPanelButton_ChallengeModeTooltipText",
-            frequency = 1,
-            icon = GetInterfaceIcon(),
-            iconWidth = 16,
-            category = "Information",
-            version = GetAddOnMetadata(ADDON_NAME, "Version"),
-            savedVariables = {
-                ShowIcon = 1,
-                DisplayOnRightSide = false,
-                ShowLabelText = true,
-                LabelTextColor = true,
-                DisplayWeeklyBest = true,
-                DisplayHighestLevel = true
-            }
-        }
-        C_ChallengeMode.RequestMapInfo();
-        C_ChallengeMode.RequestRewards();
     end
 
-    _G["TitanPanelRightClickMenu_Prepare" .. PLUGIN_NAME .. "Menu"] = PrepareMenuCallback
+    _G["TitanPanelRightClickMenu_Prepare" .. PLUGIN_NAME .. "Menu"] = ChallengeModeRightClickMenuPrepare
     _G["TitanPanelButton_ChallengeModeButtonText"] = ChallengeModeButtonText
     _G["TitanPanelButton_ChallengeModeTooltipText"] = ChallengeModeTooltipText
 
@@ -286,5 +305,7 @@ function RegisterPlugin()
 end
 
 RegisterPlugin()
-C_ChallengeMode.RequestMapInfo();
-C_ChallengeMode.RequestRewards();
+C_MythicPlus.RequestMapInfo();
+C_MythicPlus.RequestRewards();
+
+

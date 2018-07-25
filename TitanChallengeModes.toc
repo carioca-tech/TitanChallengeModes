@@ -1,4 +1,4 @@
-## Interface: 070300
+## Interface: 80000
 ## Title: Titan Panel [Mythic Dungeons] |cffffffffBy Thymorr
 ## Author: Otiluke
 ## Version: 0.1.0

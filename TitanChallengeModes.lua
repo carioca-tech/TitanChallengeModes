@@ -4,11 +4,9 @@ local I18N = LibStub("AceLocale-3.0"):GetLocale("TitanChallengeMode")
 local TITAN_I18N = LibStub("AceLocale-3.0"):GetLocale("Titan", true)
 local PLUGIN_NAME = "TITAN_CHALLENGE_MODE"
 
-local logger = {}
-local Console = LibStub("AceConsole-3.0")
-function logger.debug(message)
-    -- Console.Print(message)
-end
+-- local Console = LibStub("AceConsole-3.0")
+local Console = {}
+function Console:Print() end
 
 local sortedMaps = {}
 local chestRewardLevel = {
@@ -81,17 +79,20 @@ function ChallengeModeMapsUpdatedCallback(p_frame, p_event, ...)
 
     table.sort(newMaps, function(a, b) return a.name < b.name end);
     sortedMaps = newMaps
+
+    local button = TitanUtils_GetButton(PLUGIN_NAME);
+
+    local icon = _G[button:GetName().."Icon"];
+    TitanUtils_GetPlugin(PLUGIN_NAME).icon = GetInterfaceIcon()
+    icon:SetTexture(TitanUtils_GetPlugin(PLUGIN_NAME).icon)
+
     TitanPanelButton_UpdateButton(PLUGIN_NAME)
+    TitanPanelButton_SetButtonIcon(PLUGIN_NAME)
 end
 
-
-function ChallengeModeCompletedCallback()
-    C_MythicPlus.RequestMapInfo();
-    C_MythicPlus.RequestRewards();
-end
 
 local function ChallengeModeButtonText()
-    logger.debug("ChallengeModeButtonText")
+    Console.Print("ChallengeModeButtonText")
     local bestMap;
     local bestLevel = 0;
 
@@ -143,10 +144,11 @@ local function ChallengeModeTooltipText()
     local rewardAvailable = C_MythicPlus.IsWeeklyRewardAvailable()
 
     if rewardAvailable then
-        logger.debug("reward available")
+        Console.Print("reward available")
         tooltipText = tooltipText .. TitanUtils_GetColoredText(I18N["You still haven't claimed your rewards for this week."], RED_FONT_COLOR) .. "\n"
+        RequestMythicPlusInfo()
     else
-        logger.debug("reward not available")
+        Console.Print("reward not available")
     end
 
     if (sortedMaps and #sortedMaps) then
@@ -176,7 +178,7 @@ local function ChallengeModeTooltipText()
                 weeklyRewardItemLevel = chestRewardLevel[bestRunLevel]
             end
 
-            local highestDungeonThisWeek = string.format(I18N["You've completed +%s this week."], bestRunLevel)
+            local highestDungeonThisWeek = string.format(I18N["You've completed a +%s this week."], bestRunLevel)
             local weeklyChestContents = string.format(I18N["Your next weekly chest will contain an item of item level %s or above."], weeklyRewardItemLevel)
 
             tooltipText = tooltipText .. TitanUtils_GetColoredText(highestDungeonThisWeek, NORMAL_FONT_COLOR) .. "\n" ..
@@ -188,7 +190,7 @@ local function ChallengeModeTooltipText()
 end
 
 function ChallengeModeRightClickMenuPrepare()
-    logger.debug("ChallengeModeRightClickMenuPrepare")
+    Console.Print("ChallengeModeRightClickMenuPrepare")
 
     TitanPanelRightClickMenu_AddTitle(TitanPlugins[PLUGIN_NAME].menuText)
     TitanPanelRightClickMenu_AddToggleIcon(PLUGIN_NAME)
@@ -236,33 +238,39 @@ function GetInterfaceIcon()
     end
 end
 
+function RequestMythicPlusInfo()
+    C_MythicPlus.RequestMapInfo();
+    C_MythicPlus.RequestRewards();
+end
+
+
 function RegisterPlugin()
-    logger.debug("RegisterPlugin")
+    Console.Print("RegisterPlugin")
 
     local frame = CreateFrame("Button", "TitanPanelTITAN_CHALLENGE_MODEButton", CreateFrame("Frame", nil, UIParent), "TitanPanelComboTemplate")
+    frame["CHALLENGE_MODE_MAPS_UPDATE"] = function(self, event, ...) ChallengeModeMapsUpdatedCallback(self, event,...) end
+    frame["CHALLENGE_MODE_COMPLETED"] = function(self,event, ...) RequestMythicPlusInfo(self, event, ...) end
+    frame["PLAYER_ENTERING_WORLD"] = function(self,event, ...) RequestMythicPlusInfo(self, event, ...) end
 
-    frame:SetFrameStrata("FULLSCREEN")
     frame:SetScript("OnEvent", function(self, event, ...)
-            if self[event] then self[event](self, event, ...)end
+        Console.Print(event)
+        if self[event] then
+            self[event](self, event, ...)
+        end
     end)
-    frame:RegisterEvent("ADDON_LOADED")
-    frame:SetScript("OnClick", function(self, button, ...)
-        TitanPanelButton_OnClick(self, button)
-    end)
+    frame:SetFrameStrata("FULLSCREEN")
+    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     frame:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
     frame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 
-    frame["CHALLENGE_MODE_MAPS_UPDATE"] = function(self, event, ...) ChallengeModeMapsUpdatedCallback(self, event,...) end
-    frame["CHALLENGE_MODE_COMPLETED"] = function(self,event, ...) ChallengeModeCompletedCallback(self, event, ...) end
 
-    function frame:ADDON_LOADED(a1)
-        if a1 ~= ADDON_NAME then
-            return
-        end
-        logger.debug("ADDON_LOADED")
-        self:UnregisterEvent("ADDON_LOADED")
-        self.ADDON_LOADED = nil
-    end
+    frame:SetScript("OnClick", function(self, button, ...)
+        TitanPanelButton_OnClick(self, button)
+    end)
+
+    C_MythicPlus.RequestMapInfo();
+    C_MythicPlus.RequestRewards();
+
 
 
     frame.registry = {
@@ -291,7 +299,7 @@ function RegisterPlugin()
         if a1 ~= ADDON_NAME then
             return
         end
-        logger.debug("ADDON_LOADED")
+        Console.Print("ADDON_LOADED")
 
         self:UnregisterEvent("ADDON_LOADED")
         self.ADDON_LOADED = nil
@@ -305,7 +313,4 @@ function RegisterPlugin()
 end
 
 RegisterPlugin()
-C_MythicPlus.RequestMapInfo();
-C_MythicPlus.RequestRewards();
-
 

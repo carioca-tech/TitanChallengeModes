@@ -3,3 +3,5 @@
 - 0.1.2 Loading map info as soon as the addon runs
 - 0.2.0 ToolTip Fixes, 1st release build.
 - 0.2.1 ToolTip Fixes
+- 0.3.0 BFA
+- 0.3.1 Icon Bugfixes; Thanks Linzhou@EmeraldDream for the grammar help :)

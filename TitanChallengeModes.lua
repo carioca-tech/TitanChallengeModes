@@ -309,6 +309,7 @@ function RegisterPlugin()
     _G["TitanPanelButton_ChallengeModeButtonText"] = ChallengeModeButtonText
     _G["TitanPanelButton_ChallengeModeTooltipText"] = ChallengeModeTooltipText
 
+    RequestMythicPlusInfo()
     return frame
 end
 

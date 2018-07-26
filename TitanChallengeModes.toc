@@ -1,7 +1,7 @@
 ## Interface: 80000
 ## Title: Titan Panel [Mythic Dungeons] |cffffffffBy Thymorr
 ## Author: Otiluke
-## Version: 0.1.0
+## Version: 0.3.1
 ## Notes: Titan Panel Plugin for Mythic Dungeons
 ## DefaultState: Enabled
 ## LoadOnDemand: 0
